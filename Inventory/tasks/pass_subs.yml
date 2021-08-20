@@ -1,0 +1,26 @@
+- name: Get all resource group information in the given subscription
+  connection: local
+  azure_rm_resourcegroup_facts:
+    client_id: "{{ AZURE_CLIENT_ID }}"
+    tenant: "{{ AZURE_TENANT }}"
+    secret: "{{ AZURE_SECRET }}"
+    tags: "{{ az_tags }}"
+    subscription_id: "{{ item }}"
+  register: jsoncontent
+
+- name: Save item as variable
+  set_fact:
+    subitem: "{{ item }}"
+
+
+- name: Filter only Resource Group names
+  set_fact:
+    rg_output: "{{ jsoncontent | json_query(jmesquery)}}"
+  vars:
+    jmesquery: "ansible_facts.azure_resourcegroups[].name"
+
+
+- name: List of RG Item
+  include: inventory.yml
+  loop: "{{ rg_output | difference(excluded_rg) }}"
+  when: rg_output != item

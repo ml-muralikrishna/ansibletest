@@ -1,0 +1,55 @@
+- name: Get facts for all virtual machines of a resource group
+  connection: local
+  azure_rm_virtualmachine_info:
+    resource_group: "{{ item }}"
+    client_id: "{{ AZURE_CLIENT_ID }}"
+    tenant: "{{ AZURE_TENANT }}"
+    secret: "{{ AZURE_SECRET }}"
+    tags: "{{ az_tags }}"
+    subscription_id: "{{ subitem }}"
+  register: jsoncontent
+  ignore_errors: true
+  when: item != ""
+
+
+- name: Get facts of VM by tags for "{{ item }}"
+  connection: local
+  azure_rm_virtualmachine_info:
+    client_id: "{{ AZURE_CLIENT_ID }}"
+    tenant: "{{ AZURE_TENANT }}"
+    secret: "{{ AZURE_SECRET }}"
+    tags: "{{ az_tags }}"
+    subscription_id: "{{ subitem }}"
+    resource_group: "{{ item }}"
+    tags:
+      - "{{ az_tags }}"
+  register: jsoncontent
+  ignore_errors: true
+
+
+- name: Filter only VM names
+  set_fact:
+    vms: "{{ jsoncontent | json_query(jmesquery) }}"
+  vars:
+    jmesquery: "vms[].name"
+
+
+- name: Output
+  debug:
+    msg: "{{ item }}"
+  with_items: "{{ vms }}"
+
+
+- name: Write RG name as Host group name
+  lineinfile:
+    line: "[{{ item | lower }}]"
+    dest: /home/{{ user }}/AZ-UK-ANS-INVENTORY/inventory.ini
+  when: vms | length != 0
+
+
+- name: log result to file
+  lineinfile:
+    line: "{{ item | lower }}{{ env }}"
+    dest: /home/{{ user }}/AZ-UK-ANS-INVENTORY/inventory.ini
+  with_items: "{{ vms }}"
+  when: vms | length != 0
